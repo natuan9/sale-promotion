@@ -1,5 +1,4 @@
-from odoo import _, models
-from odoo.tools import format_amount
+from odoo import models
 
 
 class SaleOrder(models.Model):
@@ -64,35 +63,42 @@ class SaleOrder(models.Model):
         return total_saving
 
     def _get_reward_values_discount(self, reward, coupon, **kwargs):
+        """Override to apply discounts to order lines."""
         rewards = super()._get_reward_values_discount(reward, coupon, **kwargs)
-        currency = self.pricelist_id.currency_id
 
-        for reward_line in rewards:
-            if (
-                reward.reward_type == "discount"
-                and reward.discount_mode == "percent"
-                and (
-                    reward.program_id.program_type == "coupons"
-                    or reward.program_id.program_type == "promo_code"
-                )
-            ):
-                # Get the saved amount
-                # Cannot use the reward_line.price_unit for the saved amount
-                # because _get_reward_line_values is called twice.
-                # Once in _apply_program_reward and once in _update_programs_and_rewards
-                saved_amount = self.get_total_saving(reward)
-                formatted_amount = format_amount(self.env, saved_amount, currency)
-                reward_line.update(
-                    {
-                        "name": _(
-                            f"You saved {formatted_amount} with promo {coupon.code}"
-                        ),
-                        "price_unit": 0,
-                        "product_uom_qty": 1,
-                    }
-                )
+        if (
+            reward.reward_type == "discount"
+            and reward.discount_mode == "percent"
+            and (
+                reward.program_id.program_type == "coupons"
+                or reward.program_id.program_type == "promo_code"
+            )
+        ):
+            # Apply discounts directly to order lines
+            self.update_discount_percentage()
 
         return rewards
+
+    def _update_programs_and_rewards(self):
+        """Override to handle reward lines after discounts are applied."""
+        res = super()._update_programs_and_rewards()
+
+        # After discounts are applied, remove the reward lines for percentage discounts
+        reward_lines = self.order_line.filtered(
+            lambda line: (
+                line.reward_id
+                and line.reward_id.reward_type == "discount"
+                and line.reward_id.discount_mode == "percent"
+                and (
+                    line.reward_id.program_id.program_type == "coupons"
+                    or line.reward_id.program_id.program_type == "promo_code"
+                )
+            )
+        )
+        if reward_lines:
+            reward_lines.unlink()
+
+        return res
 
     def update_discount_percentage(self):
         self.ensure_one()
