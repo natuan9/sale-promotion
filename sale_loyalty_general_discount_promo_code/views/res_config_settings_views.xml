@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_res_config_settings_inherit_discount" model="ir.ui.view">
+        <field name="name">res.config.settings.inherit.discount</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="sale.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//setting[@id='coupon_settings']" position="after">
+                <setting
+                    id="promo_code_settings"
+                    string="Automatically Apply Promo Code Discount Percentage"
+                    help="Automatically apply promo code discount percentage to each sale order line"
+                >
+                    <field name="automatically_apply_promo_code_discount_percentage" />
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>
